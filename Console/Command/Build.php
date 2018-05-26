@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.1
+ * @version     1.0.2
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -79,8 +79,8 @@ class Build extends CreateAbstract
      */
     protected function configure()
     {
-        $description = 'This command fixes Url key issue';
-        $this->setName('blueacorn:urlmanager:urlkeyfix')->setDescription($description);
+        $description = 'This command creates websites';
+        $this->setName('blueacorn:createwebsites:build')->setDescription($description);
     }
 
     /**
@@ -90,7 +90,11 @@ class Build extends CreateAbstract
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         try{
-            $this->saveWebsite();
+            for($i = 1; $i <= 10; $i++)
+            {
+                $this->saveWebsite($i);
+            }
+
         }catch (\Exception $e){
             $this->echoMessage(['Error during Products URL Rewrites delete' => $e->getMessage()], 'error');
 
@@ -99,10 +103,11 @@ class Build extends CreateAbstract
     }
 
     /**
-     * Placeholder
+     * @param $i
      */
-    private function saveWebsite()
+    private function saveWebsite($i)
     {
+        echo $this->echoMessage(['stuff'=> $i . 'is currently running']);
         return;
     }
 
