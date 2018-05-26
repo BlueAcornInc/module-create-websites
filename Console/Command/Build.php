@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.3
+ * @version     1.0.4
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -81,6 +81,9 @@ class Build extends CreateAbstract
     {
         $description = 'This command creates websites';
         $this->setName('blueacorn:createwebsites:build')->setDescription($description);
+        // Next line will add a new required parameter to our script
+        $this->addArgument('number', InputArgument::REQUIRED, __('Type a number of websites'));
+
     }
 
     /**
@@ -90,7 +93,8 @@ class Build extends CreateAbstract
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         try{
-            for($i = 1; $i <= 10; $i++)
+            $number = $input->getArgument('number');
+            for($i = 1; $i <= $number; $i++)
             {
                 $this->saveWebsite($i);
             }
