@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.4
+ * @version     1.0.5
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -14,6 +14,7 @@ namespace BlueAcorn\CreateWebsites\Console\Command;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Input\InputArgument;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\Data\CategoryInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;

@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     Blueacorn\registration.php
- * @version     1.0.4
+ * @version     1.0.5
  * @author      Blue Acorn <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn.
  */
