@@ -21,6 +21,12 @@ use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use BlueAcorn\CreateWebsites\Console\Command\CreateAbstract;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Store\Model\GroupFactory;
+use Magento\Store\Model\ResourceModel\Group;
+use Magento\Store\Model\ResourceModel\Store;
+use Magento\Store\Model\ResourceModel\Website;
+use Magento\Store\Model\StoreFactory;
+use Magento\Store\Model\WebsiteFactory;
 
 /**
  * Class Build
@@ -32,9 +38,34 @@ class Build extends CreateAbstract
     protected $connection;
     protected $category;
     protected $categoryRepository;
-    protected $product;
+    protected $website;
     protected $productRepository;
     protected $state;
+    protected $code;
+    /**
+     * @var WebsiteFactory
+     */
+    private $websiteFactory;
+    /**
+     * @var Website
+     */
+    private $websiteResourceModel;
+    /**
+     * @var StoreFactory
+     */
+    private $storeFactory;
+    /**
+     * @var GroupFactory
+     */
+    private $groupFactory;
+    /**
+     * @var Group
+     */
+    private $groupResourceModel;
+    /**
+     * @var Store
+     */
+    private $storeResourceModel;
 
     /**
      * @var array
@@ -54,21 +85,25 @@ class Build extends CreateAbstract
      */
     public function __construct(
                                 \Magento\Framework\App\State $state,
-                                CategoryInterface $category,
-                                CategoryRepositoryInterface $categoryRepository,
-                                ProductInterface $product,
-                                ProductRepositoryInterface $productRepository,
+                                WebsiteFactory $websiteFactory,
+                                Website $websiteResourceModel,
+                                Store $storeResourceModel,
+                                Group $groupResourceModel,
+                                StoreFactory $storeFactory,
+                                GroupFactory $groupFactory,
                                 ScopeConfigInterface $scopeConfig){
 
         $objectManager              = \Magento\Framework\App\ObjectManager::getInstance(); // Instance of object manager
         $resource                   = $objectManager->get('Magento\Framework\App\ResourceConnection');
         $this->connection           = $resource->getConnection();
         $this->state                = $state;
-        $this->scopeConfig                  = $scopeConfig;
-        $this->category             = $category;
-        $this->categoryRepository   = $categoryRepository;
-        $this->product              = $product;
-        $this->productRepository    = $productRepository;
+        $this->scopeConfig          = $scopeConfig;
+        $this->websiteFactory       = $websiteFactory;
+        $this->websiteResourceModel = $websiteResourceModel;
+        $this->storeFactory         = $storeFactory;
+        $this->groupFactory         = $groupFactory;
+        $this->groupResourceModel   = $groupResourceModel;
+        $this->storeResourceModel   = $storeResourceModel;
 
         // To avoid Area code not set: Area code must be set before starting a session.
         $this->state->setAreaCode(\Magento\Framework\App\Area::AREA_ADMINHTML);
@@ -83,7 +118,8 @@ class Build extends CreateAbstract
         $description = 'This command creates websites';
         $this->setName('blueacorn:createwebsites:build')->setDescription($description);
         // Next line will add a new required parameter to our script
-        $this->addArgument('number', InputArgument::REQUIRED, __('Type a number of websites'));
+        $this->addArgument('number_of_websites_to_create', InputArgument::REQUIRED, __('Type a number of websites'));
+        $this->addArgument('root_category_id', InputArgument::REQUIRED, __('ID of the root category'));
 
     }
 
@@ -94,27 +130,112 @@ class Build extends CreateAbstract
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         try{
-            $number = $input->getArgument('number');
-            for($i = 1; $i <= $number; $i++)
+            $number_of_websites_to_create = $input->getArgument('number_of_websites_to_create');
+            $root_category_id = $input->getArgument('root_category_id');
+            for($i = 1; $i <= $number_of_websites_to_create; $i++)
             {
-                $this->saveWebsite($i);
+                // get our random code for the websites and store view
+                $this->code                 = $this->createRandomCode();
+                /** @var \Magento\Store\Model\Website $website */
+                $website = $this->websiteFactory->create();
+
+                // Make sure its not used already
+                if(!$website->getId()) {
+                    // Save the  website
+                    $_website = $this->saveWebsite($website);
+                    /** @var \Magento\Store\Model\Group $group */
+                    $group  = $this->groupFactory->create();
+                    $_group = $this->saveGroup($_website, $group, $root_category_id);
+                }
+
+                /** @var  \Magento\Store\Model\Store $store */
+                $store = $this->storeFactory->create();
+                $store->load($this->code);
+                // make sure its not used already
+                if(!$store->getId()){
+                    $this->saveStoreView($_website, $_group, $store);
+                }
             }
 
         }catch (\Exception $e){
-            $this->echoMessage(['Error during Products URL Rewrites delete' => $e->getMessage()], 'error');
-
+            $this->echoMessage(['Error during website/goup/store creation' => $e->getMessage()], 'error');
+            return;
         }
 
     }
 
     /**
-     * @param $i
+     * Name
+     * Code
+     * Optional sort_order
+     * After complete setup website/store/store view
+     *   website['default_group_id']
+     * @param $website
      */
-    private function saveWebsite($i)
+    private function saveWebsite($website)
     {
-        echo $this->echoMessage(['stuff'=> $i . 'is currently running']);
-        return;
+        try{
+            $website->load($this->code);
+
+                $website->setCode($this->code);
+                $website->setName($this->code);
+                // Not sure this is needed
+                //$website->setDefaultGroupId(3);
+                return $this->websiteResourceModel->save($website);
+
+        }catch (\Exception $e){
+            $this->echoMessage(['ERROR' => $e->getMessage()]);
+            return;
+        }
     }
+    /**
+     * Assign to new website
+     * Also set Root Category
+     * @param $website
+     * @param $group
+     * @param $root_category_id
+     */
+    private function saveGroup($website, $group, $root_category_id)
+    {
+        try{
+
+            $group->setWebsiteId($website->getWebsiteId());
+            $group->setName($this->code);
+            $group->setRootCategoryId($root_category_id);
+            //$group->setDefaultStoreId(3);
+            return $this->groupResourceModel->save($group);
+        }catch (\Exception $e){
+            $this->echoMessage(['ERROR' => $e->getMessage()]);
+            return;
+        }
+
+    }
+
+    /**
+     * Assign to new store['group_id']
+     * Name
+     * Code
+     * Status boolean 0=disabled 1=enabled
+     * optional sort_order
+     * @param $website
+     * @param $group
+     * @param $store
+     */
+    private function saveStoreView($website, $group, $store)
+    {
+        try{
+            $store->setCode($this->code);
+            $store->setName($this->code);
+            $store->setWebsite($website);
+            $store->setGroupId($group->getId());
+            $store->setData('is_active','1');
+            return $this->storeResourceModel->save($store);
+        }catch (\Exception $e){
+            $this->echoMessage(['ERROR' => $e->getMessage()]);
+        }
+
+    }
+
 
 
 }

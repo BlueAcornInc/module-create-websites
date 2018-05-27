@@ -79,4 +79,26 @@ class CreateAbstract extends Command
         }
     }
 
+    /**
+     * @param int $length
+     * @return string
+     */
+    public function createRandomCode($length = 12)
+    {
+        $characters = 'abcdefghijklmnopqrstuvwxyz';
+        $charactersLength = strlen($characters);
+        $code = '';
+        // first part
+        for ($i = 0; $i < $length; $i++) {
+            $code .= $characters[rand(0, $charactersLength - 1)];
+        }
+        // Second part
+        $code .='_';
+        for ($i = 0; $i < $length; $i++) {
+            $code .= $characters[rand(0, $charactersLength - 1)];
+        }
+        // Now we should have something like abcdef_abcdef but much more random
+        return $code;
+    }
+
 }
