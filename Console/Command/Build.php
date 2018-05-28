@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.6
+ * @version     1.0.7
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -15,6 +15,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\Data\CategoryInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
@@ -84,14 +85,14 @@ class Build extends CreateAbstract
      * @param ScopeConfigInterface $scopeConfig
      */
     public function __construct(
-                                \Magento\Framework\App\State $state,
-                                WebsiteFactory $websiteFactory,
-                                Website $websiteResourceModel,
-                                Store $storeResourceModel,
-                                Group $groupResourceModel,
-                                StoreFactory $storeFactory,
-                                GroupFactory $groupFactory,
-                                ScopeConfigInterface $scopeConfig){
+        \Magento\Framework\App\State $state,
+        WebsiteFactory $websiteFactory,
+        Website $websiteResourceModel,
+        Store $storeResourceModel,
+        Group $groupResourceModel,
+        StoreFactory $storeFactory,
+        GroupFactory $groupFactory,
+        ScopeConfigInterface $scopeConfig){
 
         $objectManager              = \Magento\Framework\App\ObjectManager::getInstance(); // Instance of object manager
         $resource                   = $objectManager->get('Magento\Framework\App\ResourceConnection');
@@ -107,7 +108,7 @@ class Build extends CreateAbstract
 
         // To avoid Area code not set: Area code must be set before starting a session.
         $this->state->setAreaCode(\Magento\Framework\App\Area::AREA_ADMINHTML);
-	    parent::__construct($scopeConfig);
+        parent::__construct($scopeConfig);
     }
 
     /**
@@ -116,11 +117,23 @@ class Build extends CreateAbstract
     protected function configure()
     {
         $description = 'This command creates websites';
-        $this->setName('blueacorn:createwebsites:build')->setDescription($description);
-        // Next line will add a new required parameter to our script
-        $this->addArgument('number_of_websites_to_create', InputArgument::REQUIRED, __('Type a number of websites'));
-        $this->addArgument('root_category_id', InputArgument::REQUIRED, __('ID of the root category'));
-
+        $this->setName('blueacorn:createwebsites:build')
+            ->setDescription($description)
+            ->setDefinition([
+                new InputOption(
+                    'websites',
+                    '--websites',
+                    InputOption::VALUE_REQUIRED,
+                    'Number of websites to create.'
+                ),
+                new InputOption(
+                    'root-category-id',
+                    '--root-category-id',
+                    InputOption::VALUE_REQUIRED,
+                    'What is the root category id'
+                )
+            ]);
+        parent::configure();
     }
 
     /**
@@ -130,8 +143,8 @@ class Build extends CreateAbstract
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         try{
-            $number_of_websites_to_create = $input->getArgument('number_of_websites_to_create');
-            $root_category_id = $input->getArgument('root_category_id');
+            $websites_to_create = $input->getOption('websites');
+            $root_category_id   = $input->getOption('root-category-id');
             for($i = 1; $i <= $number_of_websites_to_create; $i++)
             {
                 // get our random code for the websites and store view
@@ -177,11 +190,11 @@ class Build extends CreateAbstract
         try{
             $website->load($this->code);
 
-                $website->setCode($this->code);
-                $website->setName($this->code);
-                // Not sure this is needed
-                //$website->setDefaultGroupId(3);
-                return $this->websiteResourceModel->save($website);
+            $website->setCode($this->code);
+            $website->setName($this->code);
+            // Not sure this is needed
+            //$website->setDefaultGroupId(3);
+            return $this->websiteResourceModel->save($website);
 
         }catch (\Exception $e){
             $this->echoMessage(['ERROR' => $e->getMessage()]);
@@ -233,9 +246,5 @@ class Build extends CreateAbstract
         }catch (\Exception $e){
             $this->echoMessage(['ERROR' => $e->getMessage()]);
         }
-
     }
-
-
-
 }
