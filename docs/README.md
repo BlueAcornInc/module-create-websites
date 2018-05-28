@@ -12,4 +12,5 @@ none
 * 1.0.2 Fixed command, and moved README.md to docs folder
 * 1.0.3 Updated readme and trying to fix upgrade 
 * 1.0.4 Added number of store requirement
-* 1.0.7 Added default category requirement.  Create websites store groups and store views.
+* 1.0.6 Added default category requirement.  Create websites store groups and store views.
+* 1.0.7 Added better flags.  Fixed some logic when creating store groups and store views.
