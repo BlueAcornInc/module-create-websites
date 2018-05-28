@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.7
+ * @version     1.0.8
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -15,6 +15,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Catalog\Model\CategoryRepository;
 
 /**
  * Class CreateAbstract
@@ -26,10 +27,18 @@ class CreateAbstract extends Command
      * @var \Magento\Framework\App\Config\ScopeConfigInterface
      */
     protected $scopeConfig;
+
+    /**
+     * @var \Magento\Catalog\Model\CategoryRepository
+     */
+    protected $categoryRepository;
+
     public function __construct(
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        CategoryRepository $categoryRepository
     ){
         $this->scopeConfig                  = $scopeConfig;
+        $this->categoryRepository           = $categoryRepository;
         return parent::__construct();
     }
     /**
@@ -76,6 +85,27 @@ class CreateAbstract extends Command
         {
             echo $key . ': ' . $_value .'
 ';
+        }
+    }
+
+    /**
+     * @param $root_category_id
+     * @return int
+     * @throws \Exception
+     */
+    public function validateRootCategoryId($root_category_id)
+    {
+        // check to see if the requested root category ID exists
+        $exists = false;
+        /** @var $cat Magento\Catalog\Model\CategoryRepository */
+        $cat = $this->categoryRepository->get($root_category_id);
+
+        if($cat->getId())
+        {
+            return (int)$root_category_id;
+        }
+        else{
+            throw new \Exception('Requested root category ID does not exist');
         }
     }
 

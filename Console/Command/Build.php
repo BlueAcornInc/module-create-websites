@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.7
+ * @version     1.0.8
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -143,9 +143,12 @@ class Build extends CreateAbstract
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         try{
-            $websites_to_create = $input->getOption('websites');
-            $root_category_id   = $input->getOption('root-category-id');
-            for($i = 1; $i <= $number_of_websites_to_create; $i++)
+            // Set our variable for number of websites to create
+            $websites_to_create = (int)$input->getOption('websites');
+            // Get the root category ID
+            $root_category_id   = $this->validateRootCategoryId($input->getOption('root-category-id'));
+            // Loop through all the websites to create
+            for($i = 1; $i <= $websites_to_create; $i++)
             {
                 // get our random code for the websites and store view
                 $this->code                 = $this->createRandomCode();
@@ -155,10 +158,10 @@ class Build extends CreateAbstract
                 // Make sure its not used already
                 if(!$website->getId()) {
                     // Save the  website
-                    $_website = $this->saveWebsite($website);
+                    $this->saveWebsite($website);
                     /** @var \Magento\Store\Model\Group $group */
                     $group  = $this->groupFactory->create();
-                    $_group = $this->saveGroup($_website, $group, $root_category_id);
+                    $this->saveGroup($website, $group, $root_category_id);
                 }
 
                 /** @var  \Magento\Store\Model\Store $store */
@@ -166,8 +169,13 @@ class Build extends CreateAbstract
                 $store->load($this->code);
                 // make sure its not used already
                 if(!$store->getId()){
-                    $this->saveStoreView($_website, $_group, $store);
+                    $this->saveStoreView($website, $group, $store);
                 }
+                // reset to ensure we dont get any bleed-over
+                $this->code = null;
+                $website    = null;
+                $group      = null;
+                $store      = null;
             }
 
         }catch (\Exception $e){
@@ -176,6 +184,8 @@ class Build extends CreateAbstract
         }
 
     }
+
+
 
     /**
      * Name
