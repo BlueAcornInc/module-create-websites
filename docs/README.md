@@ -5,10 +5,10 @@ Create websites via a command line
 Add this to your composer.json inside "require" 
     
     "require": {
-    ...
-    "blueacorn/module-create-websites": "1.0.*"
-    ...
- }
+       ...
+       "blueacorn/module-create-websites": "1.0.*"
+       ...
+    }
  
 ## Sample commands
     
