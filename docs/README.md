@@ -2,8 +2,11 @@
 
 Create websites via a command line
 
-Add this to your composer.json inside "require" 
+##### Run this command to add to your composer.json
     
+    composer require blueacorn/module-create-websites:1.0.*
+    
+##### It should look somethig like this afterwards
     "require": {
        ...
        "blueacorn/module-create-websites": "1.0.*"
@@ -33,3 +36,4 @@ none
 * 1.0.9 Fixing the abstract class to handle the validation of the root category ID.  Adding all products to newly created websites 
 * 1.0.10 Adding composer instructions in README.md
 * 1.0.11 Added some instructions on the README.md
+* 1.0.12 Updated the README.md with notes on how to install the module.
