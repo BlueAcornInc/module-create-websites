@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.13
+ * @version     1.0.14
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -223,6 +223,11 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        //Set the start time
+        $time_start = microtime(true);
+        // Show the start time
+        $this->echoMessage(['Start' => $time_start]);
+
         try{
             // Set our variable for number of websites to create
             $websites_to_create = (int)$input->getOption('websites');
@@ -266,6 +271,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 $group      = null;
                 $store      = null;
             }
+
             // Lets reindex just the catalog search fulltext
             $this->reindexCatalogSearchFulltext();
             // We are ready to move all the products to our websites
@@ -274,6 +280,13 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
             $this->echoMessage(['Error during website/goup/store creation' => $e->getMessage()], 'error');
             return;
         }
+
+        // Endtime
+        $time_end = microtime(true);
+        // Calculate execution time
+        $execution_time = ($time_end - $time_start)/60;
+        // show total execution time
+        $this->echoMessage(['Total Execution Time' => $execution_time]);
     }
 
     /**
@@ -336,10 +349,6 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
      * Optional sort_order
      * After complete setup website/store/store view
      *   website['default_group_id']
-     * @param $website
-     * @return $this|bool
-     */
-    /**
      * @param $website
      * @return $this|bool
      */
@@ -451,6 +460,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 $this->echoMessage(['Event catalog_product_to_website_change' => 'finished']);
 
             }
+
             $this->echoMessage(['Success' => __('A total of %1 record(s) were updated.', count($productIds))]);
 
             // Make sure we have some new websites and we to run the product indexer
@@ -463,11 +473,8 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 // Reindex product price
                 $this->_productPriceIndexerProcessor->reindexList($productIds);
                 $this->echoMessage(['Reindex Price Indexer' => 'finished']);
-
             }
-        } catch (\Magento\Framework\Exception\LocalizedException $e) {
-            $this->echoMessage(['Localized Exception Error message' => $e->getMessage()], 'error');
-        } catch (\Exception $e) {
+        }catch(\Exception $e){
             $this->echoMessage(['Exception Error message' => $e->getMessage()], 'error');
         }
     }
