@@ -101,6 +101,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
     protected $allCategoryIds   = [];
     protected $duplicateIds     = [];
     protected $websiteIds       = [];
+    protected $storeIds         = [];
 
     /**
      * This is needed I am using some Magento core that used it, so please don't judge me
@@ -108,6 +109,10 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
      */
     protected $_objectManager;
 
+    /**
+     * @var bool
+     */
+    protected $runProductIndexer    = true;
     /**
      * Build constructor.
      * @param \Magento\Framework\App\State $state
@@ -185,7 +190,14 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                     'root-category-id',
                     null,
                     InputOption::VALUE_REQUIRED,
-                    'What is the root category id'
+                    'What is the root category id?'
+                ),
+                new InputOption(
+                    'run-product-indexer',
+                    null,
+                    InputOption::VALUE_OPTIONAL,
+                    'Run the product indexer? Default is true',
+                    1
                 )
             ]);
         parent::configure();
@@ -203,6 +215,8 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
             $websites_to_create = (int)$input->getOption('websites');
             // Get the root category ID
             $root_category_id   = $this->validateRootCategoryId($input->getOption('root-category-id'));
+            // change the flag if no or 0 was used
+            $this->_setRunProductIndexer($input->getOption('run-product-indexer'));
             // Loop through all the websites to create
             for($i = 1; $i <= $websites_to_create; $i++)
             {
@@ -227,9 +241,12 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 if(!$store->getId()){
                     $this->saveStoreView($website, $group, $store);
                 }
+                // setup some values we will need later
+                $this->websiteIds[$website->getId()]    = $website->getId();
+                $this->storeIds[]                       = $store->getId();
+                // Output a messafe for what has happened so far
+                $this->echoMessage(['Code: ' => $this->code, 'Website ID' => $website->getId(), 'Group ID' => $group->getId(), 'Store View ID' => $store->getId(), 'Root Category ID' => $root_category_id, 'Store View Name' => $this->code], 'website');
 
-                $this->websiteIds[$website->getId()] = $website->getId();
-                $this->echoMessage(['Code: ' => $this->code, 'Website ID' => $website->getId(), 'Group ID' => $group->getId(), 'Store View ID' => $store->getId(), 'Store View Name & Code' => $this->code, 'Root Category ID' => $root_category_id], 'website');
                 // reset to ensure we don't get any bleed-over
                 $this->code = null;
                 $website    = null;
@@ -246,13 +263,27 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
     }
 
     /**
+     * We only want to change this if they typed in no or 0
+     * @param $value
+     */
+    protected function _setRunProductIndexer($value)
+    {
+        // lets see if they typed in 0 or no
+        switch (strtolower($value))
+        {
+            case 'no':
+            case '0':
+                $this->runProductIndexer = false;
+                break;
+        }
+    }
+
+    /**
      * Do the reindex of catalog search fulltext, otherwise we get an error that the table does not exist
      * @param $website
      */
     private function reindexCatalogSearchFulltext()
     {
-        // @TODO: If possible just reindex for the websites we just created
-        $websiteIds = $this->websiteIds;
 
         // catalogsearch_fulltext
         // We need this to happen before we continue
@@ -261,11 +292,16 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
             'catalogsearch_fulltext',
         );
         foreach ($indexerIds as $indexerId) {
-            echo "Preparing to reindex: ".$indexerId."\n";
+
+            $this->echoMessage(['Preparing to reindex' => $indexerId], 'reindex');
+
+            /** @var \Magento\Indexer\Model\IndexerFactory $indexer */
             $indexer = $indexerFactory->create();
+            $indexer->setStores($this->storeIds);
             $indexer->load($indexerId);
             $indexer->reindexAll();
         }
+        $this->echoMessage(['Reindex' => 'complete' ], 'reindex');
     }
 
     /**
@@ -382,13 +418,17 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
             }
             $this->echoMessage(['Success' => __('A total of %1 record(s) were updated.', count($productIds))]);
 
-            // simple validation
-            if (!empty($websiteAddData)) {
-                $this->echoMessage(['Reindex starting' => __('%1 records will be reindexed.', count($productIds))]);
+            // Make sure we have some new websites and we to run the product indexer
+            if (!empty($websiteAddData) && $this->runProductIndexer) {
+                $this->echoMessage(['Reindex Product Flat ' => 'starting']);
                 // Reindex Product
                 $this->_productFlatIndexerProcessor->reindexList($productIds);
+                $this->echoMessage(['Reindex Product Flat' => 'finished' ]);
+                $this->echoMessage(['Reindex Price Indexer ' => 'starting']);
                 // Reindex product price
                 $this->_productPriceIndexerProcessor->reindexList($productIds);
+                $this->echoMessage(['Reindex Price Indexer' => 'finished']);
+
             }
         } catch (\Magento\Framework\Exception\LocalizedException $e) {
             $this->echoMessage(['Localized Exception Error message' => $e->getMessage()], 'error');
