@@ -9,6 +9,14 @@ Add this to your composer.json inside "require"
     "blueacorn/module-create-websites": "1.0.*"
     ...
  }
+ 
+## Sample commands
+    
+### Full process, just define how many websites you want and what is the root category id    
+    php bin/magento blueacorn:createwebsites:build --websites=10 --root-category-id=2
+    
+### To avoid having the product indexer run add the optional --run-product-indexer=no
+    php bin/magento blueacorn:createwebsites:build --websites=1 --root-category-id=2 --run-product-indexer=no 
 ## Dependencies
 none
 
@@ -23,4 +31,5 @@ none
 * 1.0.7 Added better flags.  Fixed some logic when creating store groups and store views.
 * 1.0.8 Added category validation check
 * 1.0.9 Fixing the abstract class to handle the validation of the root category ID.  Adding all products to newly created websites 
-* 1.0.10 Adding composer instructions in README
+* 1.0.10 Adding composer instructions in README.md
+* 1.0.11 Added some instructions on the README.md
