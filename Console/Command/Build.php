@@ -467,7 +467,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 $execution_time = $this->_getExecutionTime($end_time, $start_time);
 
                 // finished message
-                $this->echoMessage(['Update Websites with the existing product catalog' => 'finished', 'Total Execution Time' => $execution_time]);
+                $this->echoMessage(['Update Websites with the existing product catalog' => 'finished', 'This section execution Time' => $execution_time]);
 
                 $start_time = microtime(true);
 
@@ -479,7 +479,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 // Calculate execution time
                 $execution_time = $this->_getExecutionTime($end_time, $start_time);
 
-                $this->echoMessage(['Event catalog_product_to_website_change' => 'finished', 'Total Execution Time' => $execution_time]);
+                $this->echoMessage(['Event catalog_product_to_website_change' => 'finished', 'This section execution Time' => $execution_time]);
 
             }
 
@@ -496,7 +496,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 // Calculate execution time
                 $execution_time = $this->_getExecutionTime($end_time, $start_time);
 
-                $this->echoMessage(['Reindex Product Flat' => 'finished', 'Total Execution Time' => $execution_time]);
+                $this->echoMessage(['Reindex Product Flat' => 'finished', 'This section execution Time' => $execution_time]);
                 $start_time = microtime(true);
 
                 $this->echoMessage(['Reindex Price Indexer ' => 'starting', 'Start time' => $start_time]);
@@ -506,7 +506,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 // Calculate execution time
                 $execution_time = $this->_getExecutionTime($end_time, $start_time);
 
-                $this->echoMessage(['Reindex Price Indexer' => 'finished', 'Total Execution Time' => $execution_time]);
+                $this->echoMessage(['Reindex Price Indexer' => 'finished', 'This section execution Time' => $execution_time]);
             }
         }catch(\Exception $e){
             $this->echoMessage(['Exception Error message' => $e->getMessage()], 'error');
