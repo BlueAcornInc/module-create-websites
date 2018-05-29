@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.8
+ * @version     1.0.9
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -15,7 +15,8 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
-use Magento\Catalog\Model\CategoryRepository;
+use Magento\Catalog\Api\CategoryRepositoryInterface;
+use Magento\Framework\Exception\NoSuchEntityException;
 
 /**
  * Class CreateAbstract
@@ -33,9 +34,16 @@ class CreateAbstract extends Command
      */
     protected $categoryRepository;
 
+    /**
+     * CreateAbstract constructor.
+     * @param ScopeConfigInterface $scopeConfig
+     * @param CategoryRepositoryInterface $categoryRepository
+     *
+     * @SuppressWarnings(PHPMD.ExcessiveParameterList)
+     */
     public function __construct(
         ScopeConfigInterface $scopeConfig,
-        CategoryRepository $categoryRepository
+        CategoryRepositoryInterface $categoryRepository
     ){
         $this->scopeConfig                  = $scopeConfig;
         $this->categoryRepository           = $categoryRepository;
@@ -51,6 +59,7 @@ class CreateAbstract extends Command
         return $this->scopeConfig->getValue($key, ScopeInterface::SCOPE_STORE, $store);
 
     }
+
     /**
      * @param array $params
      * @param null $type
@@ -67,11 +76,14 @@ class CreateAbstract extends Command
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!';
 
                 break;
-            case 'url_rewrite':
-                $divider    = '*-------------------------  Product and url_rewrite  ---------------------------------*';
+            case 'website':
+                $divider    = '*-----------------------  Website / Group / Store View  -------------------------------*';
                 break;
-            case 'category':
-                $divider    = '*----------------------------------  Category  ---------------------------------------*';
+            case 'group':
+                $divider    = '*----------------------------------  Group  ---------------------------------------*';
+                break;
+            case 'store_view':
+                $divider    = '*----------------------------------  Store View  ---------------------------------------*';
                 break;
             default:
                 $divider    = '*-------------------------------------------------------------------------------------*';
@@ -91,21 +103,18 @@ class CreateAbstract extends Command
     /**
      * @param $root_category_id
      * @return int
-     * @throws \Exception
+     * @throws NoSuchEntityException
      */
     public function validateRootCategoryId($root_category_id)
     {
-        // check to see if the requested root category ID exists
-        $exists = false;
-        /** @var $cat Magento\Catalog\Model\CategoryRepository */
-        $cat = $this->categoryRepository->get($root_category_id);
-
-        if($cat->getId())
+        /** @var \Magento\Catalog\Api\CategoryRepositoryInterface $cat  */
+        $checkCategory = $this->categoryRepository->get($root_category_id);
+        // Make sure that the category ID is valid and it is a level 1 ( root category )
+        if((int)$checkCategory->getId() && ((int)$checkCategory->getLevel() === 1))
         {
             return (int)$root_category_id;
-        }
-        else{
-            throw new \Exception('Requested root category ID does not exist');
+        }else{
+            throw new NoSuchEntityException(__('Root Category ID doesn\'t exist: %1', $root_category_id));
         }
     }
 
