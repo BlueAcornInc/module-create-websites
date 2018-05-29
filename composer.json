@@ -2,7 +2,7 @@
   "name": "blueacorn/module-create-websites",
   "description": "Blue Acorn Create Websites Module",
   "type": "magento2-module",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "autoload": {
     "files": ["registration.php"],
     "psr-4": {

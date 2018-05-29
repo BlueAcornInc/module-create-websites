@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.12
+ * @version     1.0.13
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -11,12 +11,9 @@ namespace BlueAcorn\CreateWebsites\Console\Command;
 // Leaving in case we need it
 //error_reporting('E_ALL & ~E_NOTICE');
 
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
-use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -35,13 +32,22 @@ use Magento\Store\Model\WebsiteFactory;
 class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
 {
 
-    protected $connection;
-    protected $category;
+    /**
+     * @var CategoryRepositoryInterface
+     */
     protected $categoryRepository;
+    /**
+     * @var
+     */
     protected $website;
+    /**
+     * @var \Magento\Framework\App\State
+     */
     protected $state;
+    /**
+     * @var
+     */
     protected $code;
-
     /**
      * @var ProductRepositoryInterface
      */
@@ -78,24 +84,33 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
      * @var Store
      */
     private $storeResourceModel;
-
     /**
      * @var \Magento\Framework\Event\ManagerInterface
      */
     protected $_eventManager;
-
     /**
      * @var \Magento\Catalog\Model\Indexer\Product\Flat\Processor
      */
     protected $_productFlatIndexerProcessor;
-
     /**
      * @var \Magento\Catalog\Model\Indexer\Product\Price\Processor
      */
     protected $_productPriceIndexerProcessor;
+    /**
+     * @var \Magento\Indexer\Model\Indexer\CollectionFactory
+     */
+    protected $_indexFactory;
+    /**
+     * @var \Magento\Catalog\Model\Product\Action
+     */
+    protected $action;
+    /**
+     * @var bool
+     */
+    protected $runProductIndexer    = true;
 
     /**
-     * @var array
+     * Some arrays we need for later
      */
     protected $allProductIds    = [];
     protected $allCategoryIds   = [];
@@ -104,18 +119,16 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
     protected $storeIds         = [];
 
     /**
-     * This is needed I am using some Magento core that used it, so please don't judge me
-     * @var \Magento\Framework\ObjectManagerInterface
-     */
-    protected $_objectManager;
-
-    /**
-     * @var bool
-     */
-    protected $runProductIndexer    = true;
-    /**
      * Build constructor.
      * @param \Magento\Framework\App\State $state
+     * @param \Magento\Framework\Event\ManagerInterface $eventManager
+     * @param \Magento\Catalog\Model\Indexer\Product\Flat\Processor $productFlatIndexerProcessor
+     * @param \Magento\Catalog\Model\Indexer\Product\Price\Processor $productPriceIndexerProcessor
+     * @param ProductRepositoryInterface $productRepository
+     * @param \Magento\Framework\Api\FilterBuilder $filterBuilder
+     * @param \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder
+     * @param \Magento\Indexer\Model\Indexer\CollectionFactory $indexerCollectionFactory
+     * @param \Magento\Catalog\Model\Product\Action $action
      * @param WebsiteFactory $websiteFactory
      * @param Website $websiteResourceModel
      * @param Store $storeResourceModel
@@ -133,6 +146,8 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
         \Magento\Catalog\Api\ProductRepositoryInterface $productRepository,
         \Magento\Framework\Api\FilterBuilder $filterBuilder,
         \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder,
+        \Magento\Indexer\Model\Indexer\CollectionFactory $indexerCollectionFactory,
+        \Magento\Catalog\Model\Product\Action $action,
         WebsiteFactory $websiteFactory,
         Website $websiteResourceModel,
         Store $storeResourceModel,
@@ -142,12 +157,8 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
         ScopeConfigInterface $scopeConfig,
         CategoryRepositoryInterface $categoryRepository){
 
-        $objectManager                          = \Magento\Framework\App\ObjectManager::getInstance(); // Instance of object manager
-        $resource                               = $objectManager->get('Magento\Framework\App\ResourceConnection');
-        $this->_objectManager                   = $objectManager;
         $this->_productFlatIndexerProcessor     = $productFlatIndexerProcessor;
         $this->_productPriceIndexerProcessor    = $productPriceIndexerProcessor;
-        $this->connection                       = $resource->getConnection();
         $this->state                            = $state;
         $this->scopeConfig                      = $scopeConfig;
         $this->websiteFactory                   = $websiteFactory;
@@ -161,6 +172,8 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
         $this->productRepository                = $productRepository;
         $this->searchCriteriaBuilder            = $searchCriteriaBuilder;
         $this->filterBuilder                    = $filterBuilder;
+        $this->_indexFactory                    = $indexerCollectionFactory;
+        $this->action                           = $action;
         try {
             // To avoid Area code not set: Area code must be set before starting a session.
             $this->state->setAreaCode(\Magento\Framework\App\Area::AREA_ADMINHTML);
@@ -253,6 +266,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 $group      = null;
                 $store      = null;
             }
+            // Lets reindex just the catalog search fulltext
             $this->reindexCatalogSearchFulltext();
             // We are ready to move all the products to our websites
             $this->saveProductsToNewlyCreatedWebsites();
@@ -280,28 +294,40 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
 
     /**
      * Do the reindex of catalog search fulltext, otherwise we get an error that the table does not exist
-     * @param $website
      */
     private function reindexCatalogSearchFulltext()
     {
-
-        // catalogsearch_fulltext
-        // We need this to happen before we continue
-        $indexerFactory = $this->_objectManager->get('Magento\Indexer\Model\IndexerFactory');
-        $indexerIds = array(
-            'catalogsearch_fulltext',
-        );
-        foreach ($indexerIds as $indexerId) {
-
-            $this->echoMessage(['Preparing to reindex' => $indexerId], 'reindex');
-
-            /** @var \Magento\Indexer\Model\IndexerFactory $indexer */
-            $indexer = $indexerFactory->create();
-            $indexer->setStores($this->storeIds);
-            $indexer->load($indexerId);
-            $indexer->reindexAll();
+        if(!count($this->storeIds))
+        {
+            $this->echoMessage(['Reindex' => 'skipped', 'Count of storeIds' => count($this->storeIds) ], 'reindex');
+            return;
         }
+
+        /**
+         * Getting all the indexers first, then matching the one we want
+         */
+        foreach ($this->getAllIndexers() as $_indexer)
+        {
+            // make sure we just do the one we want, catalogsearch_fulltext
+            if($_indexer->getId() == 'catalogsearch_fulltext')
+            {
+                $this->echoMessage(['Preparing to reindex' => $_indexer->getId()], 'reindex');
+                // Ensure we set the store ids so it only does the ones we specify
+                $_indexer->setStores($this->storeIds);
+                $_indexer->reindexAll();
+            }
+        }
+        // display our complete message
         $this->echoMessage(['Reindex' => 'complete' ], 'reindex');
+    }
+
+    /**
+     * Get all the indexer items
+     * @return \Magento\Framework\DataObject[]
+     */
+    protected function getAllIndexers()
+    {
+        return $this->_indexFactory->create()->getItems();
     }
 
     /**
@@ -335,6 +361,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
             return false;
         }
     }
+
     /**
      * Assign to new website
      * Also set Root Category
@@ -357,7 +384,6 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
             $this->echoMessage(['Error message' => $e->getMessage()], 'error');
             return false;
         }
-
     }
 
     /**
@@ -413,7 +439,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 $this->echoMessage(['Update Websites with the existing product catalog' => 'starting']);
 
                 /* @var $actionModel \Magento\Catalog\Model\Product\Action */
-                $actionModel = $this->_objectManager->get('Magento\Catalog\Model\Product\Action');
+                $actionModel = $this->action;
                 // Update the websites
                 $actionModel->updateWebsites($productIds, $websiteAddData, 'add');
                 // finished message
@@ -455,6 +481,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
         $this->searchCriteriaBuilder->setFilterGroups([]);
         return $this->searchCriteriaBuilder->addFilter('entity_id', '1', 'gteq')->create();
     }
+
     /**
      * Get all the product IDs from this site
      * @return array
@@ -476,5 +503,4 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
         // Return our array
         return $productIds;
     }
-
 }
