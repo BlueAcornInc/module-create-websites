@@ -245,7 +245,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 $this->websiteIds[$website->getId()]    = $website->getId();
                 $this->storeIds[]                       = $store->getId();
                 // Output a messafe for what has happened so far
-                $this->echoMessage(['Code: ' => $this->code, 'Website ID' => $website->getId(), 'Group ID' => $group->getId(), 'Store View ID' => $store->getId(), 'Root Category ID' => $root_category_id, 'Store View Name' => $this->code], 'website');
+                $this->echoMessage(['Code' => $this->code, 'Website ID' => $website->getId(), 'Group ID' => $group->getId(), 'Store View ID' => $store->getId(), 'Root Category ID' => $root_category_id, 'Store View Name' => $this->code], 'website');
 
                 // reset to ensure we don't get any bleed-over
                 $this->code = null;
@@ -408,13 +408,22 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
         try {
             // This should always be set, but it doesn't hurt to have it, its simple validation
             if ($websiteAddData) {
+
+                // Starting message
+                $this->echoMessage(['Update Websites with the existing product catalog' => 'starting']);
+
                 /* @var $actionModel \Magento\Catalog\Model\Product\Action */
                 $actionModel = $this->_objectManager->get('Magento\Catalog\Model\Product\Action');
                 // Update the websites
                 $actionModel->updateWebsites($productIds, $websiteAddData, 'add');
+                // finished message
+                $this->echoMessage(['Update Websites with the existing product catalog' => 'finished']);
 
+                $this->echoMessage(['Event catalog_product_to_website_change' => 'starting']);
                 // This may be removed, not sure, Magento core was doing this
                 $this->_eventManager->dispatch('catalog_product_to_website_change', ['products' => $productIds]);
+                $this->echoMessage(['Event catalog_product_to_website_change' => 'finished']);
+
             }
             $this->echoMessage(['Success' => __('A total of %1 record(s) were updated.', count($productIds))]);
 
