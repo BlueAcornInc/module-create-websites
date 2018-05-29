@@ -236,6 +236,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
                 $group      = null;
                 $store      = null;
             }
+            $this->reindexCatalogSearchFulltext();
             // We are ready to move all the products to our websites
             $this->saveProductsToNewlyCreatedWebsites();
         }catch (\Exception $e){
@@ -244,7 +245,28 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
         }
     }
 
+    /**
+     * Do the reindex of catalog search fulltext, otherwise we get an error that the table does not exist
+     * @param $website
+     */
+    private function reindexCatalogSearchFulltext()
+    {
+        // @TODO: If possible just reindex for the websites we just created
+        $websiteIds = $this->websiteIds;
 
+        // catalogsearch_fulltext
+        // We need this to happen before we continue
+        $indexerFactory = $this->_objectManager->get('Magento\Indexer\Model\IndexerFactory');
+        $indexerIds = array(
+            'catalogsearch_fulltext',
+        );
+        foreach ($indexerIds as $indexerId) {
+            echo "Preparing to reindex: ".$indexerId."\n";
+            $indexer = $indexerFactory->create();
+            $indexer->load($indexerId);
+            $indexer->reindexAll();
+        }
+    }
 
     /**
      * Name
@@ -362,6 +384,7 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
 
             // simple validation
             if (!empty($websiteAddData)) {
+                $this->echoMessage(['Reindex starting' => __('%1 records will be reindexed.', count($productIds))]);
                 // Reindex Product
                 $this->_productFlatIndexerProcessor->reindexList($productIds);
                 // Reindex product price
@@ -372,15 +395,6 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
         } catch (\Exception $e) {
             $this->echoMessage(['Exception Error message' => $e->getMessage()], 'error');
         }
-    }
-    /**
-     * We just want an empty filter for now
-     * @return \Magento\Framework\Api\Filter[]
-     */
-    private function buildFilters()
-    {
-        $filters = [];
-        return $filters;
     }
 
     /**
