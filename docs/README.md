@@ -40,3 +40,4 @@ none
 * 1.0.13 Changed method on how to load indexers and find the appropriate match.
 * 1.0.14 Adding timer output
 * 1.0.15 Adding hour minute and second output
+* 1.0.16 Fixing labels for each area that is showing time, to avoid confusion with the total time taken
