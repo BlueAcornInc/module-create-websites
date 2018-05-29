@@ -39,3 +39,4 @@ none
 * 1.0.12 Updated the README.md with notes on how to install the module.
 * 1.0.13 Changed method on how to load indexers and find the appropriate match.
 * 1.0.14 Adding timer output
+* 1.0.15 Adding hour minute and second output

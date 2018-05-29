@@ -1,7 +1,7 @@
 <?php
 /**
  * @package     BlueAcorn\CreateWebsites
- * @version     1.0.14
+ * @version     1.0.15
  * @author      Blue Acorn, Inc. <code@blueacorn.com>
  * @copyright   Copyright © 2018 Blue Acorn, Inc.
  */
@@ -224,9 +224,9 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         //Set the start time
-        $time_start = microtime(true);
+        $start_time = microtime(true);
         // Show the start time
-        $this->echoMessage(['Start' => $time_start]);
+        $this->echoMessage(['Start' => $start_time]);
 
         try{
             // Set our variable for number of websites to create
@@ -282,9 +282,9 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
         }
 
         // Endtime
-        $time_end = microtime(true);
+        $end_time = microtime(true);
         // Calculate execution time
-        $execution_time = ($time_end - $time_start)/60;
+        $execution_time = $this->_getExecutionTime($end_time, $start_time);
         // show total execution time
         $this->echoMessage(['Total Execution Time' => $execution_time]);
     }
@@ -309,10 +309,12 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
      * Do the reindex of catalog search fulltext, otherwise we get an error that the table does not exist
      */
     private function reindexCatalogSearchFulltext()
-    {
+    {        //Set the start time
+        $start_time = microtime(true);
+
         if(!count($this->storeIds))
         {
-            $this->echoMessage(['Reindex' => 'skipped', 'Count of storeIds' => count($this->storeIds) ], 'reindex');
+            $this->echoMessage(['Reindex Start' => $start_time, 'Reindex' => 'skipped', 'Count of storeIds' => count($this->storeIds) ], 'reindex');
             return;
         }
 
@@ -324,14 +326,18 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
             // make sure we just do the one we want, catalogsearch_fulltext
             if($_indexer->getId() == 'catalogsearch_fulltext')
             {
-                $this->echoMessage(['Preparing to reindex' => $_indexer->getId()], 'reindex');
+                $this->echoMessage(['Preparing to reindex' => $_indexer->getId(), 'Start time' => $start_time], 'reindex');
                 // Ensure we set the store ids so it only does the ones we specify
                 $_indexer->setStores($this->storeIds);
                 $_indexer->reindexAll();
             }
         }
+
+        $end_time = microtime(true);
+        // Calculate execution time
+        $execution_time = $this->_getExecutionTime($end_time, $start_time);
         // display our complete message
-        $this->echoMessage(['Reindex' => 'complete' ], 'reindex');
+        $this->echoMessage(['Reindex End total time' => $execution_time, 'Reindex' => 'complete' ], 'reindex');
     }
 
     /**
@@ -444,20 +450,36 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
             // This should always be set, but it doesn't hurt to have it, its simple validation
             if ($websiteAddData) {
 
-                // Starting message
-                $this->echoMessage(['Update Websites with the existing product catalog' => 'starting']);
+                //Set the start time
+                $start_time = microtime(true);
+
+
+                    // Starting message
+                $this->echoMessage(['Update Websites with the existing product catalog' => 'starting', 'Start time' => $start_time]);
 
                 /* @var $actionModel \Magento\Catalog\Model\Product\Action */
                 $actionModel = $this->action;
                 // Update the websites
                 $actionModel->updateWebsites($productIds, $websiteAddData, 'add');
+
+                $end_time = microtime(true);
+                // Calculate execution time
+                $execution_time = $this->_getExecutionTime($end_time, $start_time);
+
                 // finished message
-                $this->echoMessage(['Update Websites with the existing product catalog' => 'finished']);
+                $this->echoMessage(['Update Websites with the existing product catalog' => 'finished', 'Total Execution Time' => $execution_time]);
+
+                $start_time = microtime(true);
 
                 $this->echoMessage(['Event catalog_product_to_website_change' => 'starting']);
                 // This may be removed, not sure, Magento core was doing this
                 $this->_eventManager->dispatch('catalog_product_to_website_change', ['products' => $productIds]);
-                $this->echoMessage(['Event catalog_product_to_website_change' => 'finished']);
+
+                $end_time = microtime(true);
+                // Calculate execution time
+                $execution_time = $this->_getExecutionTime($end_time, $start_time);
+
+                $this->echoMessage(['Event catalog_product_to_website_change' => 'finished', 'Total Execution Time' => $execution_time]);
 
             }
 
@@ -465,18 +487,46 @@ class Build extends \BlueAcorn\CreateWebsites\Console\Command\CreateAbstract
 
             // Make sure we have some new websites and we to run the product indexer
             if (!empty($websiteAddData) && $this->runProductIndexer) {
-                $this->echoMessage(['Reindex Product Flat ' => 'starting']);
+                $start_time = microtime(true);
+
+                $this->echoMessage(['Reindex Product Flat ' => 'starting', 'Start Time' => $start_time]);
                 // Reindex Product
                 $this->_productFlatIndexerProcessor->reindexList($productIds);
-                $this->echoMessage(['Reindex Product Flat' => 'finished' ]);
-                $this->echoMessage(['Reindex Price Indexer ' => 'starting']);
+                $end_time = microtime(true);
+                // Calculate execution time
+                $execution_time = $this->_getExecutionTime($end_time, $start_time);
+
+                $this->echoMessage(['Reindex Product Flat' => 'finished', 'Total Execution Time' => $execution_time]);
+                $start_time = microtime(true);
+
+                $this->echoMessage(['Reindex Price Indexer ' => 'starting', 'Start time' => $start_time]);
                 // Reindex product price
                 $this->_productPriceIndexerProcessor->reindexList($productIds);
-                $this->echoMessage(['Reindex Price Indexer' => 'finished']);
+                $end_time = microtime(true);
+                // Calculate execution time
+                $execution_time = $this->_getExecutionTime($end_time, $start_time);
+
+                $this->echoMessage(['Reindex Price Indexer' => 'finished', 'Total Execution Time' => $execution_time]);
             }
         }catch(\Exception $e){
             $this->echoMessage(['Exception Error message' => $e->getMessage()], 'error');
         }
+    }
+
+    /**
+     * @param $end_time
+     * @param $start_time
+     * @return float|int
+     */
+    private function _getExecutionTime($end_time, $start_time)
+    {
+
+            $duration   = $end_time - $start_time;
+            $hours      = (int)($duration/60/60);
+            $minutes    = (int)($duration/60)-$hours*60;
+            $seconds    = (int)$duration-$hours*60*60-$minutes*60;
+
+        return 'Hours: ' . $hours . ' Minutes: ' . $minutes . ' Seconds: ' . $seconds;
     }
 
     /**
